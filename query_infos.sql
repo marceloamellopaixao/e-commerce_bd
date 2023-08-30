@@ -141,13 +141,88 @@ INSERT INTO productSupplier (idPsSupplier, idPsProduct, quantity) VALUES
 (5, 10, 350);
 
 -- Mostrando os dados de cada tabela
-SELECT * FROM clients;
-SELECT * FROM product;
-SELECT * FROM payments;
-SELECT * FROM orders;
-SELECT * FROM productStorage;
-SELECT * FROM supplier;
-SELECT * FROM seller;
-SELECT * FROM productSeller;
-SELECT * FROM storageLocation;
-SELECT * FROM productSupplier;
+-- SELECT * FROM clients;
+-- SELECT * FROM product;
+-- SELECT * FROM payments;
+-- SELECT * FROM orders;
+-- SELECT * FROM productStorage;
+-- SELECT * FROM supplier;
+-- SELECT * FROM seller;
+-- SELECT * FROM productSeller;
+-- SELECT * FROM storageLocation;
+-- SELECT * FROM productSupplier;
+
+USE ecommerce;
+
+-- Consulta 1: Lista de clientes com idade maior que 25, ordenados pelo nome
+SELECT CONCAT(Fname, ' ', Lname) AS FullName, dtBirth,
+       TIMESTAMPDIFF(YEAR, dtBirth, CURDATE()) AS Age
+FROM clients
+WHERE TIMESTAMPDIFF(YEAR, dtBirth, CURDATE()) > 25
+ORDER BY Lname, Fname;
+
+-- Consulta 2: Produtos com avaliação média acima de 4, ordenados pelo nome do produto
+SELECT Pname, Classification_kids, Category, avaliation,
+       CASE WHEN avaliation > 4 THEN 'Highly Rated' ELSE 'Standard' END AS RatingCategory
+FROM product
+WHERE avaliation > 4
+ORDER BY Pname;
+
+-- Consulta 3: Pedidos confirmados com valor total acima de 100, ordenados pelo valor total
+SELECT idOrder, idOrderClient, orderStatus, VlProduct, Shipping,
+       (VlProduct + Shipping) AS TotalValue
+FROM orders
+WHERE orderStatus = 'Confirmado' AND (VlProduct + Shipping) > 100
+ORDER BY TotalValue;
+
+-- Consulta 4: Clientes com mais de 1 forma de pagamento registrada
+SELECT CONCAT(Fname, ' ', Lname) AS FullName, COUNT(payments.idPayment) AS NumPaymentMethods
+FROM clients
+INNER JOIN payments ON clients.idClient = payments.idClient
+GROUP BY clients.idClient
+HAVING NumPaymentMethods > 1;
+
+-- Consulta 5: Quantidade total de produtos em cada local de estoque
+SELECT storageLocation, SUM(quantity) AS TotalQuantity
+FROM productStorage
+GROUP BY storageLocation
+ORDER BY TotalQuantity DESC;
+
+-- Consulta 6: Fornecedores e seus produtos mais caros, ordenados pelo valor do produto
+SELECT supplier.socialName, product.Pname, product.Pvalue
+FROM supplier
+INNER JOIN productSupplier ON supplier.idSupplier = productSupplier.idPsSupplier
+INNER JOIN product ON productSupplier.idPsProduct = product.idProduct
+WHERE product.Pvalue = (SELECT MAX(Pvalue) FROM product);
+
+-- Consulta 7: Vendedores e suas vendas totais, ordenados pelas vendas
+SELECT seller.socialName, SUM(Quantity * Pvalue) AS TotalSales
+FROM seller
+INNER JOIN productSeller ON seller.idSeller = productSeller.idPseller
+INNER JOIN product ON productSeller.idProduct = product.idProduct
+GROUP BY seller.idSeller
+ORDER BY TotalSales DESC;
+
+-- Consulta 8: Clientes com mais de 2 pedidos confirmados, ordenados pelo número de pedidos
+SELECT CONCAT(clients.Fname, ' ', clients.Lname) AS FullName, COUNT(orders.idOrder) AS NumConfirmedOrders
+FROM clients
+INNER JOIN orders ON clients.idClient = orders.idOrderClient
+WHERE orders.orderStatus = 'Confirmado'
+GROUP BY clients.idClient
+HAVING NumConfirmedOrders > 2
+ORDER BY NumConfirmedOrders DESC;
+
+-- Consulta 9: Produtos e suas quantidades fornecidas por cada fornecedor
+SELECT supplier.socialName, product.Pname, productSupplier.quantity
+FROM supplier
+INNER JOIN productSupplier ON supplier.idSupplier = productSupplier.idPsSupplier
+INNER JOIN product ON productSupplier.idPsProduct = product.idProduct
+ORDER BY supplier.socialName, product.Pname;
+
+-- Consulta 10: Pedidos com pagamento em cartão de crédito e valor total acima de 200
+SELECT orders.idOrder, orders.orderStatus, orders.VlProduct, orders.Shipping,
+       (orders.VlProduct + orders.Shipping) AS TotalValue, payments.typePayment
+FROM orders
+INNER JOIN payments ON orders.idOrderPayment = payments.idPayment
+WHERE payments.typePayment = 'Cartão de Crédito' AND (orders.VlProduct + orders.Shipping) > 200
+ORDER BY TotalValue;
